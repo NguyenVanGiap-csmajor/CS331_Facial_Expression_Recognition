@@ -99,7 +99,7 @@ class MTCNNFaceAligner:
 # 2) Import định nghĩa mô hình FERPlus
 # ----------------------------------------
 # Giả định bạn đã lưu toàn bộ module model_MSAD (StemCNN, LocalCNN, TransFER, FullModel) trong `model_msad.py`
-from model_msad import StemCNN, LocalCNN, TransFER, FullModel
+from transfer_model import StemCNN, LocalCNN, TransFER, FullModel
 
 # ----------------------------------------
 # 3) Nhãn cảm xúc
