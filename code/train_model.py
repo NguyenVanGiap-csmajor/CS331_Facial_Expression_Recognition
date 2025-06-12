@@ -13,10 +13,10 @@ from torchvision import transforms
 from TransFER_model import StemCNN, LocalCNN, TransFER, FullModel
 
 # Load metadata
-df = pd.read_csv('./data/fer2013plus.csv')
+df = pd.read_csv('./dataset/Label/fer2013plus.csv')
 
 # Gốc chứa ảnh
-root = Path('./FER_Image')
+root = Path('./dataset/FER_Image')
 
 # Map Usage -> thư mục tương ứng
 usage_to_folder = {
