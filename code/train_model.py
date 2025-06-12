@@ -1,85 +1,95 @@
 # =============== Chuẩn bị dữ liệu ====================
 import os
-import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import train_test_split
+import pandas as pd
+from pathlib import Path
+from PIL import Image
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+from TransFER_model import StemCNN, LocalCNN, TransFER, FullModel
 
-data = pd.read_csv('/kaggle/input/challenges-in-representation-learning-facial-expression-recognition-challenge/icml_face_data.csv')
-data.columns = data.columns.str.strip()
+# Load metadata
+df = pd.read_csv('./data/fer2013plus.csv')
 
-pixels = data['pixels'].tolist() # 1
-width, height = 48, 48
+# Gốc chứa ảnh
+root = Path('./FER_Image')
 
-faces = []
-for pixel_sequence in pixels:
-    face = [int(pixel) for pixel in pixel_sequence.split(' ')] # 2
-    face = np.asarray(face).reshape(width, height) # 3
-    
-    # There is an issue for normalizing images. Just comment out 4 and 5 lines until when I found the solution.
-    # face = face / 255.0 # 4
-    # face = cv2.resize(face.astype('uint8'), (width, height)) # 5
-    faces.append(face.astype('float32'))
+# Map Usage -> thư mục tương ứng
+usage_to_folder = {
+    'Training'   : 'FER2013Train',
+    'PublicTest' : 'FER2013Valid',
+    'PrivateTest': 'FER2013Test'
+}
 
-faces = np.asarray(faces)
-faces = np.expand_dims(faces, -1) # 6
+# Ép cột Image name về str
+df['Image name'] = df['Image name'].astype(str)
 
-emotions = pd.get_dummies(data['emotion']).to_numpy() # 7
+# Tạo cột image_path đầy đủ
+df['image_path'] = df.apply(
+    lambda r: str(root / usage_to_folder[r['Usage']] / r['Image name']),
+    axis=1
+)
 
-X_train, X_test, y_train, y_test = train_test_split(faces, emotions, test_size=0.1, random_state=42)
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
+# 8 nhãn cảm xúc
+label_cols = [
+    'neutral','happiness','surprise','sadness',
+    'anger','disgust','fear','contempt'
+]
 
-class FERDataset(Dataset):
-    def __init__(self, X, y, train=True):
-        self.X = X.astype(np.uint8)
-        self.y = np.argmax(y, axis=1) if y.ndim > 1 else y
+class FERPlusDataset(Dataset):
+    def __init__(self, df: pd.DataFrame, train: bool):
+        self.df = df.reset_index(drop=True)
         self.train = train
-        
-        # Optimized transforms
-        if train:
+        self.labels = self.df[label_cols].values.astype('float32')
+
+        # Chọn transforms (trực tiếp trên PIL.Image)
+        if self.train:
             self.transform = transforms.Compose([
-                transforms.ToPILImage(),
                 transforms.Resize(128),
                 transforms.RandomResizedCrop(112, scale=(0.8, 1.0)),
                 transforms.RandomRotation(15),
                 transforms.RandomHorizontalFlip(0.5),
-                transforms.ToTensor(),
-                transforms.Lambda(lambda t: t.repeat(3, 1, 1) if t.size(0) == 1 else t),
-                transforms.RandomErasing(p=0.1)
+                transforms.ToTensor(),   # PIL → Tensor
+                transforms.Lambda(
+                    lambda t: t.repeat(3, 1, 1) if t.size(0) == 1 else t
+                ),
+                transforms.RandomErasing(p=0.1),
             ])
         else:
             self.transform = transforms.Compose([
-                transforms.ToPILImage(),
                 transforms.Resize(112),
                 transforms.CenterCrop(112),
-                transforms.ToTensor(),
-                transforms.Lambda(lambda t: t.repeat(3, 1, 1) if t.size(0) == 1 else t),
+                transforms.ToTensor(),   # PIL → Tensor
+                transforms.Lambda(
+                    lambda t: t.repeat(3, 1, 1) if t.size(0) == 1 else t
+                ),
             ])
 
     def __len__(self):
-        return len(self.X)
-    
+        return len(self.df)
+
     def __getitem__(self, idx):
-        img = self.X[idx]
-        if img.ndim == 3 and img.shape[2] == 1:
-            img = img.squeeze(2)  # Remove channel dimension for grayscale
+        row = self.df.iloc[idx]
+        # 1) Mở file .png dưới dạng PIL Image (grayscale)
+        img = Image.open(row['image_path']).convert('L')
+        # 2) Áp transform trực tiếp (Resize, ToTensor, v.v.)
         img = self.transform(img)
-        return img, self.y[idx]
-    
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import random
-import os
-import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader
-from torchvision import transforms
-import numpy as np
-from transfer_model import StemCNN, LocalCNN, TransFER, FullModel
+        # 3) Label
+        label = torch.from_numpy(self.labels[idx])
+        return img, label
 
 
-def train_model(model, X_train, y_train, X_val, y_val, X_test, y_test,
+# Tách train / valid / test
+train_df = df[df['Usage']=='Training']
+valid_df = df[df['Usage']=='PublicTest']
+test_df  = df[df['Usage']=='PrivateTest']
+
+# Train model
+def train_model(model, train_df, val_df, test_df,
                 num_epochs=40, batch_size=64, lr=1e-3,
                 milestones=[15,30], gamma=0.1, device='cuda',
                 save_path='best_fer_model.pth'):
@@ -88,18 +98,23 @@ def train_model(model, X_train, y_train, X_val, y_val, X_test, y_test,
     - Lưu mô hình tốt nhất (theo val_acc) vào `save_path`.
     - Sau khi train xong, vẽ biểu đồ train loss, train acc, val acc.
     """
-    # 1) Tạo datasets và dataloaders
+    # 1) Tạo datasets và loaders
     datasets = {
-        'train': FERDataset(X_train, y_train, train=True),
-        'val':   FERDataset(X_val,   y_val,   train=False),
-        'test':  FERDataset(X_test,  y_test,  train=False),
+        'train': FERPlusDataset(train_df, train=True),
+        'val':   FERPlusDataset(val_df,   train=False),
+        'test':  FERPlusDataset(test_df,  train=False),
     }
     loaders = {
-        name: DataLoader(ds, batch_size=batch_size, shuffle=(name=='train'),
-                         num_workers=4, pin_memory=True)
+        name: DataLoader(
+            ds,
+            batch_size=batch_size,
+            shuffle=(name == 'train'),
+            num_workers=4,
+            pin_memory=True
+        )
         for name, ds in datasets.items()
     }
-
+    
     print(f"Dataset sizes - Train: {len(datasets['train'])}, "
           f"Val: {len(datasets['val'])}, Test: {len(datasets['test'])}")
 
@@ -134,23 +149,26 @@ def train_model(model, X_train, y_train, X_val, y_val, X_test, y_test,
         for batch_idx, (imgs, labels) in enumerate(loaders['train'], start=1):
             imgs, labels = imgs.to(device), labels.to(device)
 
+            targets = labels.argmax(dim=1).long().to(device)  # [B]
+
             optimizer.zero_grad()
-            outputs = model(imgs)
-            loss = criterion(outputs, labels)
+            outputs = model(imgs)             # [B,8]
+            loss = criterion(outputs, targets)  # cross-entropy với integer targets
+            
             loss.backward()
             optimizer.step()
 
             # Cộng dồn loss và correct
             epoch_loss += loss.item() * imgs.size(0)
-            epoch_correct += (outputs.argmax(dim=1) == labels).sum().item()
+            epoch_correct += (outputs.argmax(dim=1) == targets).sum().item()
             processed += imgs.size(0)
 
-            # # In tiến trình theo %: (batch_idx / n_batches) * 100
-            # percent = 100 * batch_idx / n_batches
-            # print(f"\rEpoch {epoch:2d}/{num_epochs} "
-            #       f"[{processed:5d}/{total_train_samples:5d} "
-            #       f"({percent:3.0f}%)]  "
-            #       f"Loss: {loss.item():.4f}", end='')
+            # In tiến trình theo %: (batch_idx / n_batches) * 100
+            percent = 100 * batch_idx / n_batches
+            print(f"\rEpoch {epoch:2d}/{num_epochs} "
+                  f"[{processed:5d}/{total_train_samples:5d} "
+                  f"({percent:3.0f}%)]  "
+                  f"Loss: {loss.item():.4f}", end='')
 
         # Kết thúc epoch training: tính train_loss, train_acc
         train_loss = epoch_loss / total_train_samples
@@ -161,9 +179,11 @@ def train_model(model, X_train, y_train, X_val, y_val, X_test, y_test,
         val_correct = 0
         with torch.no_grad():
             for imgs, labels in loaders['val']:
-                imgs, labels = imgs.to(device), labels.to(device)
+                imgs = imgs.to(device)
+                targets = labels.argmax(dim=1).long().to(device)
                 outputs = model(imgs)
-                val_correct += (outputs.argmax(dim=1) == labels).sum().item()
+                val_correct += (outputs.argmax(dim=1) == targets).sum().item()
+                
         val_acc = val_correct / len(datasets['val'])
 
         # Lưu vào history
@@ -200,42 +220,39 @@ def train_model(model, X_train, y_train, X_val, y_val, X_test, y_test,
     test_correct = 0
     with torch.no_grad():
         for imgs, labels in loaders['test']:
-            imgs, labels = imgs.to(device), labels.to(device)
+            imgs = imgs.to(device)
+            targets = labels.argmax(dim=1).long().to(device)
             outputs = model(imgs)
-            test_correct += (outputs.argmax(dim=1) == labels).sum().item()
+            test_correct += (outputs.argmax(dim=1) == targets).sum().item()
     test_acc = test_correct / len(datasets['test'])
     print(f"\nFinal Results - Best Val Acc: {best_val_acc:.4f} | Test Acc: {test_acc:.4f}")
 
     # 7) Vẽ biểu đồ train_loss, train_acc, val_acc
     epochs = np.arange(1, len(history['train_loss']) + 1)
-    plt.figure(figsize=(12, 4))
-
-    # Train Loss
-    plt.subplot(1, 3, 1)
-    plt.plot(epochs, history['train_loss'], '-o', label='Train Loss')
+    
+    # Biểu đồ 1: Training Loss
+    plt.figure(figsize=(8, 5))
+    plt.plot(epochs, history['train_loss'], '-', label='Train Loss', color='blue')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Training Loss')
     plt.grid(True)
-
-    # Train Acc
-    plt.subplot(1, 3, 2)
-    plt.plot(epochs, history['train_acc'], '-o', label='Train Acc', color='orange')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.title('Training Accuracy')
-    plt.grid(True)
-
-    # Val Acc
-    plt.subplot(1, 3, 3)
-    plt.plot(epochs, history['val_acc'], '-o', label='Val Acc', color='green')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.title('Validation Accuracy')
-    plt.grid(True)
-
+    plt.legend()
     plt.tight_layout()
     plt.show()
+    
+    # Biểu đồ 2: Training Accuracy và Validation Accuracy
+    plt.figure(figsize=(8, 5))
+    plt.plot(epochs, history['train_acc'], '-', label='Train Acc', color='orange')
+    plt.plot(epochs, history['val_acc'], '-', label='Val Acc', color='green')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.title('Training vs Validation Accuracy')
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
 
     return model, best_val_acc, test_acc
 
@@ -244,8 +261,8 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
 
-    # Đường dẫn file pretrained IR-50
-    pretrained_path = "/kaggle/input/iresnet50/pytorch/default/1/backbone_ir50_ms1m_epoch120.pth"
+    # Đường dẫn file pretrained IR-50 như đã lưu
+    pretrained_path = "./backbone_ir50_ms1m_epoch120.pth"
     if not os.path.exists(pretrained_path):
         raise FileNotFoundError(f"Pretrained not found: {pretrained_path}")
 
@@ -264,7 +281,7 @@ if __name__ == "__main__":
     transfer = TransFER(in_channels=C,
                         proj_channels=512,
                         num_patches=num_patches,
-                        num_classes=7,
+                        num_classes=8,
                         depth=8,
                         num_heads=8,
                         mlp_ratio=4,
@@ -280,14 +297,14 @@ if __name__ == "__main__":
     # Gọi train_model
     model, best_val_acc, test_acc = train_model(
         model,
-        X_train, y_train,
-        X_val, y_val,
-        X_test, y_test,
+        train_df,
+        valid_df,
+        test_df,
         num_epochs=40,
         batch_size=64,
         lr=1e-3,
         milestones=[15, 30],
         gamma=0.1,
         device=device,
-        save_path='/kaggle/working/best_fer_model.pth'
+        save_path='./best_FER_model.pth'
     )

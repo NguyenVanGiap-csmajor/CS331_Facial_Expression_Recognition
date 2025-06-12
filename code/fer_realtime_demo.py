@@ -11,14 +11,9 @@ Bạn cần cài đặt:
 import os
 import cv2
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import random
 import numpy as np
 from PIL import Image
 from torchvision import transforms
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
 
 # ----------------------------------------
 # 1) MTCNNFaceAligner: detect + align face
@@ -99,12 +94,12 @@ class MTCNNFaceAligner:
 # 2) Import định nghĩa mô hình FERPlus
 # ----------------------------------------
 # Giả định bạn đã lưu toàn bộ module model_MSAD (StemCNN, LocalCNN, TransFER, FullModel) trong `model_msad.py`
-from transfer_model import StemCNN, LocalCNN, TransFER, FullModel
+from TransFER_model import StemCNN, LocalCNN, TransFER, FullModel
 
 # ----------------------------------------
 # 3) Nhãn cảm xúc
 # ----------------------------------------
-emotion_labels = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]
+emotion_labels = ["Neutral", "Happiness", "Surprise", "Sadness", "Anger", "Disgust", "Fear", "Contempt"]
 
 # ----------------------------------------
 # 4) Hàm load mô hình đã train
@@ -174,7 +169,7 @@ def predict_emotion(model, face_img_pil):
 def main():
     # Đường dẫn đến weights
     ir50_pretrained = 'backbone_ir50_ms1m_epoch120.pth'
-    best_model_path = "best_fer_model.pth"
+    best_model_path = "best_FER_model.pth"
 
     if not os.path.exists(ir50_pretrained):
         raise FileNotFoundError(f"IR50 pretrained not found: {ir50_pretrained}")
