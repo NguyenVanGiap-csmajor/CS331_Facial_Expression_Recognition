@@ -12,7 +12,6 @@ Dự án này là bản triển khai lại mô hình **TransFER** cho bài toán
 ![Kiến trúc mô hình](images/transfer_architecture.png)
 
 **STEM CNN**: Được dùng để trích xuất bản đồ đặc trưng từ ảnh khuôn mặt ban đầu, sử dụng kiến trúc IR-50 đã được pre-trained trên Ms-Celeb-1M. [link gốc](https://drive.google.com/drive/folders/1omzvXV_djVIW2A7I09DWMe9JR-9o_MYh)
-![Stem CNN](images/ir_50.png)
 
 ---
 
