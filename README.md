@@ -69,3 +69,7 @@ It is intended for educational and research purposes. You may use this project a
 
 ---
 
+## Members
+
+- Nguyễn Văn Giáp
+- Đào Minh Hải
