@@ -1,4 +1,4 @@
-﻿# TransFER - Facial Expression Recognition with Transformers (FER+ Re-implementation)
+# TransFER - Facial Expression Recognition with Transformers (FER+ Re-implementation)
 
 > PyTorch re-implementation of:  
 > **TransFER: Learning Relation-aware Facial Expression Representations with Transformers**  
@@ -6,27 +6,27 @@
 
 ---
 
-## Giới thiệu
+## Introduction
 
-Dự án này là bản triển khai lại mô hình **TransFER** cho bài toán nhận diện biểu cảm khuôn mặt. Mô hình được huấn luyện lại hoàn toàn trên tập dữ liệu **FERPlus**. Mô hình **TransFER** có khả năng học được các biểu diễn cục bộ giàu quan hệ ngữ cảnh. Mô hình này bao gồm ba thành phần chính: **Multi Attention Dropping (MAD)**, **ViT-FER**, và **Multi-head Self-Attention Dropping (MSAD)**.
-![Kiến trúc mô hình](images/transfer_architecture.png)
+This project is a re-implementation of the **TransFER** model for the facial expression recognition task. The model is fully re-trained on the **FERPlus** dataset. **TransFER** can learn context-aware local representations. It consists of three main components: **Multi Attention Dropping (MAD)**, **ViT-FER**, and **Multi-head Self-Attention Dropping (MSAD)**.  
+![Model architecture](images/transfer_architecture.png)
 
-**STEM CNN**: Được dùng để trích xuất bản đồ đặc trưng từ ảnh khuôn mặt ban đầu, sử dụng kiến trúc IR-50 đã được pre-trained trên Ms-Celeb-1M. [link gốc](https://drive.google.com/drive/folders/1omzvXV_djVIW2A7I09DWMe9JR-9o_MYh)
+**STEM CNN**: Used to extract feature maps from facial images, based on the IR-50 architecture pre-trained on Ms-Celeb-1M. [Original link](https://drive.google.com/drive/folders/1omzvXV_djVIW2A7I09DWMe9JR-9o_MYh)
 
 ---
 
-## Cấu trúc thư mục
+## Directory Structure
 
 ```
 TransFER/
 ├── code/
-│ ├── transfer_model.py # Mô hình TransFER
-│ ├── train.py # Huấn luyện mô hình
-│ └── fer_realtime_demo.py # Chạy thử mô hình thời gian thực
+│ ├── transfer_model.py # TransFER model
+│ ├── train.py # Training script
+│ └── fer_realtime_demo.py # Real-time demo
 │
 ├── dataset/
-│ ├── FER_Image/ # Hình ảnh để huấn luyện
-│ └── Label/ # Nhãn huấn luyện
+│ ├── FER_Image/ # Training images
+│ └── Label/ # Training labels
 │
 ├── images/
 └── README.md
@@ -36,34 +36,36 @@ TransFER/
 
 ## Dataset
 
-FER+ là bộ nhãn mở rộng cho FER2013, trong đó mỗi ảnh được gán nhãn bởi 10 người thay vì 1 nhãn đơn. Điều này cho phép biểu diễn cảm xúc dưới dạng phân phối xác suất hoặc đa nhãn, thay vì chỉ một nhãn duy nhất.
+FER+ is an extended annotation version of FER2013, where each image is labeled by 10 annotators instead of a single one. This allows representing emotions as probability distributions or multi-labels instead of just one class.
 
-Dưới đây là một số mẫu của FER và FER+ (FER top, FER+ bottom):
+Below are some examples from FER and FER+ (FER on top, FER+ on bottom):  
 ![FERvsFER+](images/FER+vsFER.png)
 
-Ở đây chúng tôi đã tải ảnh gốc và lưu lại nhãn mới trong thư mục FER_Image và Label. Hoặc có thể tại dataset gốc tại đây: [FERPlus dataset](https://github.com/microsoft/FERPlus/tree/master)
+Here we have downloaded the original images and stored the new labels in the **FER_Image** and **Label** folders. You can also access the original dataset here: [FERPlus dataset](https://github.com/microsoft/FERPlus/tree/master)
 
 ---
 
-## Result
+## Results
 
-Kết quả đạt được sau khi huấn luyện mô hình trên tập test là 84.95%
+The best performance achieved on the test set was **84.95% accuracy**.
 
-Chúng tôi đã huấn luyện mô hình và lưu lại trọng số cho kết quả tốt nhất trên tập validation. [Google Drive](https://drive.google.com/drive/u/4/folders/1DuqNhhV9suTmlCnYC9a5fAZ2cR_1NVNy)
+We trained the model and saved the best weights based on validation performance. You can download them here: [Google Drive](https://drive.google.com/drive/u/4/folders/1DuqNhhV9suTmlCnYC9a5fAZ2cR_1NVNy)
 
-Để demo mô hình hãy lưu các file trọng số này cùng với file fer_realtime_demo.py
+To run the demo, place the weight files together with the `fer_realtime_demo.py`.
 
 ---
 
 ## Notice
 
-Repo này là một bản triển khai lại từ bài báo:
-TransFER: Learning Relation-aware Facial Expression Representations with Transformers.
+This repository is a re-implementation based on the paper:  
+**TransFER: Learning Relation-aware Facial Expression Representations with Transformers**.  
 
-Tác giả gốc không công bố mã nguồn và bộ dữ liệu mà đã được xử lý theo như bài báo.
+The original authors did not release their code or pre-processed dataset.  
 
-Dự án này được thực hiện lại với ý tưởng từ bài báo gốc cũng như cách xử lý dữ liệu.
+This project re-creates the work following the ideas and methodology from the paper.  
 
-Dự án được dùng để phục vụ mục đích học tập và nghiên cứu. Mọi người có thể tham khảo từ dự án này hoặc xem bài báo gốc để hiểu rõ chi tiết. [link tham khảo](https://drive.google.com/drive/u/4/folders/1DuqNhhV9suTmlCnYC9a5fAZ2cR_1NVNy)
+It is intended for educational and research purposes. You may use this project as a reference or read the original paper for detailed insights.  
+[Reference link](https://drive.google.com/drive/u/4/folders/1DuqNhhV9suTmlCnYC9a5fAZ2cR_1NVNy)
 
 ---
+
