@@ -43,5 +43,25 @@ Dưới đây là một số mẫu của FER và FER+ (FER top, FER+ bottom):
 
 ---
 
-## Training
+## Result
 
+Kết quả đạt được sau khi huấn luyện mô hình trên tập test là 84.95%
+
+Chúng tôi đã huấn luyện mô hình và lưu lại trọng số cho kết quả tốt nhất trên tập validation. [Google Drive](https://drive.google.com/drive/u/4/folders/1DuqNhhV9suTmlCnYC9a5fAZ2cR_1NVNy)
+
+Để demo mô hình hãy lưu các file trọng số này cùng với file fer_realtime_demo.py
+
+---
+
+## Notice
+
+Repo này là một bản triển khai lại từ bài báo:
+TransFER: Learning Relation-aware Facial Expression Representations with Transformers.
+
+Tác giả gốc không công bố mã nguồn và bộ dữ liệu mà đã được xử lý theo như bài báo.
+
+Dự án này được thực hiện lại với ý tưởng từ bài báo gốc cũng như cách xử lý dữ liệu.
+
+Dự án được dùng để phục vụ mục đích học tập và nghiên cứu. Mọi người có thể tham khảo từ dự án này hoặc xem bài báo gốc để hiểu rõ chi tiết.
+
+---
