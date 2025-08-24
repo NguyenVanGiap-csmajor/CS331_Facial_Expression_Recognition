@@ -28,7 +28,7 @@ TransFER/
 │ ├── FER_Image/ # Hình ảnh để huấn luyện
 │ └── Label/ # Nhãn huấn luyện
 │
-├── images/ # Biểu đồ loss/accuracy, minh họa
+├── images/
 └── README.md
 ```
 
@@ -64,6 +64,6 @@ Tác giả gốc không công bố mã nguồn và bộ dữ liệu mà đã đ�
 
 Dự án này được thực hiện lại với ý tưởng từ bài báo gốc cũng như cách xử lý dữ liệu.
 
-Dự án được dùng để phục vụ mục đích học tập và nghiên cứu. Mọi người có thể tham khảo từ dự án này hoặc xem bài báo gốc để hiểu rõ chi tiết.
+Dự án được dùng để phục vụ mục đích học tập và nghiên cứu. Mọi người có thể tham khảo từ dự án này hoặc xem bài báo gốc để hiểu rõ chi tiết. [link tham khảo](https://drive.google.com/drive/u/4/folders/1DuqNhhV9suTmlCnYC9a5fAZ2cR_1NVNy)
 
 ---
